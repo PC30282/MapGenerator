@@ -244,7 +244,7 @@ const drawOverlay = async (data) => {
     );
   }
 
-  if (data.backgroundType !== "satellite") {
+  if (data.backgroundType === "none") {
     drawGrid(bounds);
     drawAxes(bounds);
   }
