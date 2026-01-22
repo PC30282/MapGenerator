@@ -17,7 +17,6 @@ const inputs = {
   backgroundZoom: document.getElementById("background-zoom"),
   backgroundAuto: document.getElementById("background-auto"),
   backgroundProvider: document.getElementById("background-provider"),
-  backgroundUpload: document.getElementById("background-upload"),
   radii: [
     document.getElementById("radius-1"),
     document.getElementById("radius-2"),
@@ -26,9 +25,6 @@ const inputs = {
 };
 
 const palette = ["#1f6feb", "#f97316", "#22c55e"];
-const backgroundState = {
-  uploadFile: null,
-};
 
 const drawGrid = (bounds) => {
   const { width, height, margin } = bounds;
@@ -71,17 +67,13 @@ const drawCenterPoint = (bounds, label) => {
   context.arc(width / 2, height / 2, 5, 0, Math.PI * 2);
   context.fill();
   context.font = "600 14px Inter, sans-serif";
+  context.lineWidth = 4;
+  context.strokeStyle = "#ffffff";
+  context.strokeText(label, width / 2 + 12, height / 2 - 10);
+  context.fillStyle = "#0f172a";
   context.fillText(label, width / 2 + 12, height / 2 - 10);
   context.restore();
 };
-
-const readFileAsDataUrl = (file) =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(new Error("Unable to read the image file."));
-    reader.readAsDataURL(file);
-  });
 
 const loadImage = (source) =>
   new Promise((resolve, reject) => {
@@ -93,15 +85,6 @@ const loadImage = (source) =>
     image.src = source;
   });
 
-const drawCoverImage = (image, bounds) => {
-  const { width, height } = bounds;
-  const scale = Math.min(width / image.width, height / image.height);
-  const drawWidth = image.width * scale;
-  const drawHeight = image.height * scale;
-  const dx = (width - drawWidth) / 2;
-  const dy = (height - drawHeight) / 2;
-  context.drawImage(image, dx, dy, drawWidth, drawHeight);
-};
 
 const latLonToTile = (latitude, longitude, zoom) => {
   const latRad = (latitude * Math.PI) / 180;
@@ -222,12 +205,6 @@ const drawOverlay = async (data) => {
   context.fillStyle = "#ffffff";
   context.fillRect(0, 0, canvas.width, canvas.height);
 
-  if (data.backgroundType === "upload" && data.backgroundFile) {
-    const dataUrl = await readFileAsDataUrl(data.backgroundFile);
-    const image = await loadImage(dataUrl);
-    drawCoverImage(image, bounds);
-  }
-
   let satelliteZoom = data.backgroundZoom;
   if (data.backgroundType === "satellite" && data.backgroundAuto) {
     const maxRadius = Math.max(...data.radii, 1);
@@ -258,10 +235,14 @@ const drawOverlay = async (data) => {
   drawCenterPoint(bounds, data.siteName || "Site center");
 
   context.save();
-  context.fillStyle = "#334155";
   context.font = "600 16px Inter, sans-serif";
+  context.lineWidth = 4;
+  context.strokeStyle = "#ffffff";
+  context.strokeText("Site summary", 50, 40);
+  context.fillStyle = "#0f172a";
   context.fillText("Site summary", 50, 40);
   context.font = "14px Inter, sans-serif";
+  context.lineWidth = 3;
 
   const summaryLines = [
     `Easting: ${data.easting}`,
@@ -273,7 +254,9 @@ const drawOverlay = async (data) => {
   ].filter(Boolean);
 
   summaryLines.forEach((line, index) => {
-    context.fillText(line, 50, 70 + index * 20);
+    const y = 70 + index * 20;
+    context.strokeText(line, 50, y);
+    context.fillText(line, 50, y);
   });
   context.restore();
 };
@@ -301,7 +284,6 @@ const buildPayload = () => {
     backgroundZoom: Number.parseInt(inputs.backgroundZoom.value, 10) || 15,
     backgroundAuto: inputs.backgroundAuto.checked,
     backgroundProvider: inputs.backgroundProvider.value,
-    backgroundFile: backgroundState.uploadFile,
   };
 };
 
@@ -319,11 +301,6 @@ const validatePayload = (payload) => {
   }
   return null;
 };
-
-inputs.backgroundUpload.addEventListener("change", (event) => {
-  const [file] = event.target.files;
-  backgroundState.uploadFile = file || null;
-});
 
 inputs.backgroundAuto.addEventListener("change", () => {
   inputs.backgroundZoom.disabled = inputs.backgroundAuto.checked;
@@ -354,7 +331,6 @@ form.addEventListener("submit", async (event) => {
 
 resetButton.addEventListener("click", () => {
   form.reset();
-  backgroundState.uploadFile = null;
   inputs.backgroundZoom.disabled = inputs.backgroundAuto.checked;
   status.textContent = "Canvas cleared.";
   status.classList.remove("error");
