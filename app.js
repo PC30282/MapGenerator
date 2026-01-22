@@ -15,6 +15,7 @@ const inputs = {
   rangeNorthing: document.getElementById("range-northing"),
   backgroundType: document.getElementById("background-type"),
   backgroundZoom: document.getElementById("background-zoom"),
+  backgroundProvider: document.getElementById("background-provider"),
   backgroundUpload: document.getElementById("background-upload"),
   radii: [
     document.getElementById("radius-1"),
@@ -93,7 +94,7 @@ const loadImage = (source) =>
 
 const drawCoverImage = (image, bounds) => {
   const { width, height } = bounds;
-  const scale = Math.max(width / image.width, height / image.height);
+  const scale = Math.min(width / image.width, height / image.height);
   const drawWidth = image.width * scale;
   const drawHeight = image.height * scale;
   const dx = (width - drawWidth) / 2;
@@ -113,7 +114,20 @@ const latLonToTile = (latitude, longitude, zoom) => {
   return { x, y };
 };
 
-const drawSatelliteBackground = async (latitude, longitude, zoom, bounds) => {
+const getSatelliteTileUrl = (provider, zoom, tileY, tileX) => {
+  if (provider === "esri") {
+    return `https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${tileY}/${tileX}`;
+  }
+  return `https://mt1.google.com/vt/lyrs=s&x=${tileX}&y=${tileY}&z=${zoom}`;
+};
+
+const drawSatelliteBackground = async (
+  latitude,
+  longitude,
+  zoom,
+  provider,
+  bounds
+) => {
   const tileSize = 256;
   const { width, height } = bounds;
   const { x, y } = latLonToTile(latitude, longitude, zoom);
@@ -133,7 +147,7 @@ const drawSatelliteBackground = async (latitude, longitude, zoom, bounds) => {
         continue;
       }
       const wrappedX = ((tileX % maxIndex) + maxIndex) % maxIndex;
-      const src = `https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${tileY}/${wrappedX}`;
+      const src = getSatelliteTileUrl(provider, zoom, tileY, wrappedX);
       tiles.push(
         loadImage(src).then((image) => ({
           image,
@@ -198,6 +212,7 @@ const drawOverlay = async (data) => {
       data.latitude,
       data.longitude,
       data.backgroundZoom,
+      data.backgroundProvider,
       bounds
     );
   }
@@ -251,6 +266,7 @@ const buildPayload = () => {
     radii,
     backgroundType: inputs.backgroundType.value,
     backgroundZoom: Number.parseInt(inputs.backgroundZoom.value, 10) || 15,
+    backgroundProvider: inputs.backgroundProvider.value,
     backgroundFile: backgroundState.uploadFile,
   };
 };
