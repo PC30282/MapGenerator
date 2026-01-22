@@ -77,6 +77,37 @@
             </div>
           </div>
 
+          <div class="background">
+            <h3>Background imagery</h3>
+            <p class="hint">
+              Add satellite context or upload an image to draw the rings on top.
+            </p>
+            <div class="background-grid">
+              <label>
+                Background source
+                <select id="background-type">
+                  <option value="none">None (grid only)</option>
+                  <option value="satellite">Satellite tiles (online)</option>
+                  <option value="upload">Upload image</option>
+                </select>
+              </label>
+              <label>
+                Satellite zoom
+                <input
+                  type="number"
+                  id="background-zoom"
+                  min="2"
+                  max="18"
+                  value="15"
+                />
+              </label>
+              <label>
+                Upload image
+                <input type="file" id="background-upload" accept="image/*" />
+              </label>
+            </div>
+          </div>
+
           <div class="actions">
             <button type="submit" class="primary">Generate map</button>
             <button type="button" id="reset" class="ghost">Clear</button>
