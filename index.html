@@ -10,7 +10,6 @@
     <main class="page">
       <header class="hero">
         <div>
-          <p class="eyebrow">Offline-only map generator</p>
           <h1>Phone Data Map Overlay</h1>
           <p class="subtitle">
             Enter the site details and radii to generate a map overlay. All
@@ -42,20 +41,20 @@
               <input type="number" id="site-northing" required step="any" />
             </label>
             <label>
-              Latitude* (decimal)
-              <input type="number" id="site-lat" required step="any" />
-            </label>
-            <label>
-              Longitude* (decimal)
-              <input type="number" id="site-lon" required step="any" />
-            </label>
-            <label>
               Easting range (min)
               <input type="number" id="range-easting" step="any" />
             </label>
             <label>
               Northing range (min)
               <input type="number" id="range-northing" step="any" />
+            </label>
+            <label>
+              Latitude* (decimal)
+              <input type="number" id="site-lat" required step="any" />
+            </label>
+            <label>
+              Longitude* (decimal)
+              <input type="number" id="site-lon" required step="any" />
             </label>
           </div>
 
@@ -73,6 +72,47 @@
               <label>
                 Radius 3
                 <input type="number" id="radius-3" value="70" step="any" />
+              </label>
+            </div>
+          </div>
+
+          <div class="background">
+            <h3>Background imagery</h3>
+            <p class="hint">
+              Add satellite context or upload an image to draw the rings on top.
+            </p>
+            <div class="background-grid">
+              <label>
+                Background source
+                <select id="background-type">
+                  <option value="satellite">Satellite tiles (online)</option>
+                  <option value="none">None (grid only)</option>
+                </select>
+              </label>
+              <label>
+                Satellite zoom
+                <input
+                  type="number"
+                  id="background-zoom"
+                  min="2"
+                  max="18"
+                  value="15"
+                />
+              </label>
+              <label>
+                Auto zoom to fit radii
+                <input
+                  type="checkbox"
+                  id="background-auto"
+                  checked
+                />
+              </label>
+              <label>
+                Satellite provider
+                <select id="background-provider">
+                  <option value="google">Google satellite</option>
+                  <option value="esri">Esri World Imagery</option>
+                </select>
               </label>
             </div>
           </div>
