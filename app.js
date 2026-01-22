@@ -244,8 +244,10 @@ const drawOverlay = async (data) => {
     );
   }
 
-  drawGrid(bounds);
-  drawAxes(bounds);
+  if (data.backgroundType !== "satellite") {
+    drawGrid(bounds);
+    drawAxes(bounds);
+  }
 
   const maxRadius = Math.max(...data.radii, 1);
   const scale =
