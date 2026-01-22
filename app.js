@@ -15,6 +15,7 @@ const inputs = {
   rangeNorthing: document.getElementById("range-northing"),
   backgroundType: document.getElementById("background-type"),
   backgroundZoom: document.getElementById("background-zoom"),
+  backgroundAuto: document.getElementById("background-auto"),
   backgroundProvider: document.getElementById("background-provider"),
   backgroundUpload: document.getElementById("background-upload"),
   radii: [
@@ -167,9 +168,28 @@ const drawSatelliteBackground = async (
   });
 };
 
-const drawRings = (bounds, radii, maxRadius) => {
+const metersPerPixel = (latitude, zoom) => {
+  const latitudeRadians = (latitude * Math.PI) / 180;
+  return (156543.03392 * Math.cos(latitudeRadians)) / 2 ** zoom;
+};
+
+const getFitScale = (bounds, maxRadius) => {
+  const availableRadius = Math.min(bounds.width, bounds.height) / 2 - bounds.margin;
+  return availableRadius / maxRadius;
+};
+
+const getAutoZoom = (latitude, maxRadius, bounds) => {
+  const availableRadius = Math.min(bounds.width, bounds.height) / 2 - bounds.margin;
+  const desiredMetersPerPixel = maxRadius / availableRadius;
+  const latitudeRadians = (latitude * Math.PI) / 180;
+  const zoom = Math.log2(
+    (156543.03392 * Math.cos(latitudeRadians)) / desiredMetersPerPixel
+  );
+  return Math.max(2, Math.min(18, Math.round(zoom)));
+};
+
+const drawRings = (bounds, radii, scale) => {
   const { width, height } = bounds;
-  const scale = (width * 0.4) / maxRadius;
 
   radii.forEach((radius, index) => {
     if (!radius || radius <= 0) {
@@ -180,12 +200,13 @@ const drawRings = (bounds, radii, maxRadius) => {
     context.lineWidth = 2;
     context.setLineDash([6, 6]);
     context.beginPath();
-    context.arc(width / 2, height / 2, radius * scale, 0, Math.PI * 2);
+    const pixelRadius = radius * scale;
+    context.arc(width / 2, height / 2, pixelRadius, 0, Math.PI * 2);
     context.stroke();
     context.setLineDash([]);
     context.fillStyle = palette[index % palette.length];
     context.font = "500 13px Inter, sans-serif";
-    context.fillText(`${radius}m`, width / 2 + radius * scale + 8, height / 2);
+    context.fillText(`${radius}m`, width / 2 + pixelRadius + 8, height / 2);
     context.restore();
   });
 };
@@ -207,11 +228,17 @@ const drawOverlay = async (data) => {
     drawCoverImage(image, bounds);
   }
 
+  let satelliteZoom = data.backgroundZoom;
+  if (data.backgroundType === "satellite" && data.backgroundAuto) {
+    const maxRadius = Math.max(...data.radii, 1);
+    satelliteZoom = getAutoZoom(data.latitude, maxRadius, bounds);
+  }
+
   if (data.backgroundType === "satellite") {
     await drawSatelliteBackground(
       data.latitude,
       data.longitude,
-      data.backgroundZoom,
+      satelliteZoom,
       data.backgroundProvider,
       bounds
     );
@@ -221,7 +248,11 @@ const drawOverlay = async (data) => {
   drawAxes(bounds);
 
   const maxRadius = Math.max(...data.radii, 1);
-  drawRings(bounds, data.radii, maxRadius);
+  const scale =
+    data.backgroundType === "satellite"
+      ? 1 / metersPerPixel(data.latitude, satelliteZoom)
+      : getFitScale(bounds, maxRadius);
+  drawRings(bounds, data.radii, scale);
   drawCenterPoint(bounds, data.siteName || "Site center");
 
   context.save();
@@ -266,6 +297,7 @@ const buildPayload = () => {
     radii,
     backgroundType: inputs.backgroundType.value,
     backgroundZoom: Number.parseInt(inputs.backgroundZoom.value, 10) || 15,
+    backgroundAuto: inputs.backgroundAuto.checked,
     backgroundProvider: inputs.backgroundProvider.value,
     backgroundFile: backgroundState.uploadFile,
   };
@@ -289,6 +321,10 @@ const validatePayload = (payload) => {
 inputs.backgroundUpload.addEventListener("change", (event) => {
   const [file] = event.target.files;
   backgroundState.uploadFile = file || null;
+});
+
+inputs.backgroundAuto.addEventListener("change", () => {
+  inputs.backgroundZoom.disabled = inputs.backgroundAuto.checked;
 });
 
 form.addEventListener("submit", async (event) => {
@@ -317,6 +353,7 @@ form.addEventListener("submit", async (event) => {
 resetButton.addEventListener("click", () => {
   form.reset();
   backgroundState.uploadFile = null;
+  inputs.backgroundZoom.disabled = inputs.backgroundAuto.checked;
   status.textContent = "Canvas cleared.";
   status.classList.remove("error");
   context.clearRect(0, 0, canvas.width, canvas.height);
@@ -334,3 +371,4 @@ downloadButton.addEventListener("click", () => {
 context.fillStyle = "#ffffff";
 context.fillRect(0, 0, canvas.width, canvas.height);
 status.textContent = "Enter details and generate your map.";
+inputs.backgroundZoom.disabled = inputs.backgroundAuto.checked;
