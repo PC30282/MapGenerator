@@ -118,6 +118,14 @@ input {
   font-size: 0.95rem;
 }
 
+select {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  font-size: 0.95rem;
+  background: white;
+}
+
 input:focus {
   outline: 2px solid rgba(31, 111, 235, 0.2);
   border-color: var(--accent);
@@ -130,6 +138,17 @@ input:focus {
 .radii-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.background {
+  margin-top: 24px;
+}
+
+.background-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
   margin-top: 10px;
 }

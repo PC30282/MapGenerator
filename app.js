@@ -13,6 +13,10 @@ const inputs = {
   longitude: document.getElementById("site-lon"),
   rangeEasting: document.getElementById("range-easting"),
   rangeNorthing: document.getElementById("range-northing"),
+  backgroundType: document.getElementById("background-type"),
+  backgroundZoom: document.getElementById("background-zoom"),
+  backgroundProvider: document.getElementById("background-provider"),
+  backgroundUpload: document.getElementById("background-upload"),
   radii: [
     document.getElementById("radius-1"),
     document.getElementById("radius-2"),
@@ -20,12 +24,15 @@ const inputs = {
   ],
 };
 
-const palette = ["#1f6feb", "#f97316", "#22c55e"]; 
+const palette = ["#1f6feb", "#f97316", "#22c55e"];
+const backgroundState = {
+  uploadFile: null,
+};
 
 const drawGrid = (bounds) => {
   const { width, height, margin } = bounds;
   context.save();
-  context.strokeStyle = "#e3e9f2";
+  context.strokeStyle = "rgba(227, 233, 242, 0.8)";
   context.lineWidth = 1;
 
   for (let x = margin; x <= width - margin; x += 60) {
@@ -47,7 +54,7 @@ const drawGrid = (bounds) => {
 const drawAxes = (bounds) => {
   const { width, height, margin } = bounds;
   context.save();
-  context.strokeStyle = "#cad5e5";
+  context.strokeStyle = "rgba(202, 213, 229, 0.9)";
   context.lineWidth = 2;
   context.beginPath();
   context.rect(margin, margin, width - margin * 2, height - margin * 2);
@@ -65,6 +72,99 @@ const drawCenterPoint = (bounds, label) => {
   context.font = "600 14px Inter, sans-serif";
   context.fillText(label, width / 2 + 12, height / 2 - 10);
   context.restore();
+};
+
+const readFileAsDataUrl = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("Unable to read the image file."));
+    reader.readAsDataURL(file);
+  });
+
+const loadImage = (source) =>
+  new Promise((resolve, reject) => {
+    const image = new Image();
+    image.crossOrigin = "anonymous";
+    image.onload = () => resolve(image);
+    image.onerror = () =>
+      reject(new Error("Unable to load background imagery."));
+    image.src = source;
+  });
+
+const drawCoverImage = (image, bounds) => {
+  const { width, height } = bounds;
+  const scale = Math.min(width / image.width, height / image.height);
+  const drawWidth = image.width * scale;
+  const drawHeight = image.height * scale;
+  const dx = (width - drawWidth) / 2;
+  const dy = (height - drawHeight) / 2;
+  context.drawImage(image, dx, dy, drawWidth, drawHeight);
+};
+
+const latLonToTile = (latitude, longitude, zoom) => {
+  const latRad = (latitude * Math.PI) / 180;
+  const n = 2 ** zoom;
+  const x = ((longitude + 180) / 360) * n;
+  const y =
+    (1 -
+      Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) /
+    2 *
+    n;
+  return { x, y };
+};
+
+const getSatelliteTileUrl = (provider, zoom, tileY, tileX) => {
+  if (provider === "esri") {
+    return `https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${tileY}/${tileX}`;
+  }
+  return `https://mt1.google.com/vt/lyrs=s&x=${tileX}&y=${tileY}&z=${zoom}`;
+};
+
+const drawSatelliteBackground = async (
+  latitude,
+  longitude,
+  zoom,
+  provider,
+  bounds
+) => {
+  const tileSize = 256;
+  const { width, height } = bounds;
+  const { x, y } = latLonToTile(latitude, longitude, zoom);
+  const centerPixelX = x * tileSize;
+  const centerPixelY = y * tileSize;
+  const startX = Math.floor((centerPixelX - width / 2) / tileSize);
+  const endX = Math.floor((centerPixelX + width / 2) / tileSize);
+  const startY = Math.floor((centerPixelY - height / 2) / tileSize);
+  const endY = Math.floor((centerPixelY + height / 2) / tileSize);
+  const maxIndex = 2 ** zoom;
+
+  const tiles = [];
+
+  for (let tileX = startX; tileX <= endX; tileX += 1) {
+    for (let tileY = startY; tileY <= endY; tileY += 1) {
+      if (tileY < 0 || tileY >= maxIndex) {
+        continue;
+      }
+      const wrappedX = ((tileX % maxIndex) + maxIndex) % maxIndex;
+      const src = getSatelliteTileUrl(provider, zoom, tileY, wrappedX);
+      tiles.push(
+        loadImage(src).then((image) => ({
+          image,
+          tileX,
+          tileY,
+        }))
+      );
+    }
+  }
+
+  const loadedTiles = await Promise.all(tiles);
+
+  loadedTiles.forEach(({ image, tileX, tileY }) => {
+    const dx = tileX * tileSize - (centerPixelX - width / 2);
+    const dy = tileY * tileSize - (centerPixelY - height / 2);
+    context.drawImage(image, dx, dy, tileSize, tileSize);
+  });
 };
 
 const drawRings = (bounds, radii, maxRadius) => {
@@ -90,7 +190,7 @@ const drawRings = (bounds, radii, maxRadius) => {
   });
 };
 
-const drawOverlay = (data) => {
+const drawOverlay = async (data) => {
   const bounds = {
     width: canvas.width,
     height: canvas.height,
@@ -100,6 +200,22 @@ const drawOverlay = (data) => {
   context.clearRect(0, 0, canvas.width, canvas.height);
   context.fillStyle = "#ffffff";
   context.fillRect(0, 0, canvas.width, canvas.height);
+
+  if (data.backgroundType === "upload" && data.backgroundFile) {
+    const dataUrl = await readFileAsDataUrl(data.backgroundFile);
+    const image = await loadImage(dataUrl);
+    drawCoverImage(image, bounds);
+  }
+
+  if (data.backgroundType === "satellite") {
+    await drawSatelliteBackground(
+      data.latitude,
+      data.longitude,
+      data.backgroundZoom,
+      data.backgroundProvider,
+      bounds
+    );
+  }
 
   drawGrid(bounds);
   drawAxes(bounds);
@@ -148,6 +264,10 @@ const buildPayload = () => {
     rangeEasting: parseValue(inputs.rangeEasting),
     rangeNorthing: parseValue(inputs.rangeNorthing),
     radii,
+    backgroundType: inputs.backgroundType.value,
+    backgroundZoom: Number.parseInt(inputs.backgroundZoom.value, 10) || 15,
+    backgroundProvider: inputs.backgroundProvider.value,
+    backgroundFile: backgroundState.uploadFile,
   };
 };
 
@@ -160,10 +280,18 @@ const validatePayload = (payload) => {
   if (payload.radii.length === 0) {
     return "Please provide at least one radius.";
   }
+  if (payload.backgroundType === "upload" && !payload.backgroundFile) {
+    return "Please upload an image file for the background.";
+  }
   return null;
 };
 
-form.addEventListener("submit", (event) => {
+inputs.backgroundUpload.addEventListener("change", (event) => {
+  const [file] = event.target.files;
+  backgroundState.uploadFile = file || null;
+});
+
+form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const payload = buildPayload();
   const error = validatePayload(payload);
@@ -173,13 +301,22 @@ form.addEventListener("submit", (event) => {
     return;
   }
 
-  status.textContent = "Map generated. Ready to download.";
+  status.textContent = "Generating map with overlay…";
   status.classList.remove("error");
-  drawOverlay(payload);
+  try {
+    await drawOverlay(payload);
+    status.textContent = "Map generated. Ready to download.";
+  } catch (drawError) {
+    status.textContent =
+      drawError?.message ||
+      "Unable to load background imagery. Try a different source.";
+    status.classList.add("error");
+  }
 });
 
 resetButton.addEventListener("click", () => {
   form.reset();
+  backgroundState.uploadFile = null;
   status.textContent = "Canvas cleared.";
   status.classList.remove("error");
   context.clearRect(0, 0, canvas.width, canvas.height);
