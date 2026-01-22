@@ -296,6 +296,9 @@ const validatePayload = (payload) => {
   if (payload.radii.length === 0) {
     return "Please provide at least one radius.";
   }
+  if (payload.backgroundType === "upload" && !payload.backgroundFile) {
+    return "Please upload an image file for the background.";
+  }
   return null;
 };
 
