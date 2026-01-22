@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Phone Data Map Generator</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Offline-only map generator</p>
+          <h1>Phone Data Map Overlay</h1>
+          <p class="subtitle">
+            Enter the site details and radii to generate a map overlay. All
+            processing stays in your browser—no data is stored or transmitted.
+          </p>
+        </div>
+        <div class="privacy-pill" aria-live="polite">
+          <span class="dot"></span>
+          No storage • No uploads
+        </div>
+      </header>
+
+      <section class="content">
+        <form id="map-form" class="card form-card" autocomplete="off">
+          <h2>Input details</h2>
+          <p class="hint">Fields marked with * are required.</p>
+
+          <div class="grid">
+            <label>
+              Site name
+              <input type="text" id="site-name" placeholder="Example Tower A" />
+            </label>
+            <label>
+              Easting* (meters)
+              <input type="number" id="site-easting" required step="any" />
+            </label>
+            <label>
+              Northing* (meters)
+              <input type="number" id="site-northing" required step="any" />
+            </label>
+            <label>
+              Latitude* (decimal)
+              <input type="number" id="site-lat" required step="any" />
+            </label>
+            <label>
+              Longitude* (decimal)
+              <input type="number" id="site-lon" required step="any" />
+            </label>
+            <label>
+              Easting range (min)
+              <input type="number" id="range-easting" step="any" />
+            </label>
+            <label>
+              Northing range (min)
+              <input type="number" id="range-northing" step="any" />
+            </label>
+          </div>
+
+          <div class="radii">
+            <h3>Radii (meters)</h3>
+            <div class="radii-grid">
+              <label>
+                Radius 1
+                <input type="number" id="radius-1" value="90" step="any" />
+              </label>
+              <label>
+                Radius 2
+                <input type="number" id="radius-2" value="80" step="any" />
+              </label>
+              <label>
+                Radius 3
+                <input type="number" id="radius-3" value="70" step="any" />
+              </label>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button type="submit" class="primary">Generate map</button>
+            <button type="button" id="reset" class="ghost">Clear</button>
+          </div>
+        </form>
+
+        <section class="card map-card">
+          <div class="map-header">
+            <div>
+              <h2>Generated map</h2>
+              <p class="hint">
+                Preview updates when you click “Generate map.” Use download to
+                save the overlay as an image.
+              </p>
+            </div>
+            <button id="download" class="secondary" type="button">
+              Download image
+            </button>
+          </div>
+          <div class="canvas-wrap">
+            <canvas id="map-canvas" width="900" height="600"></canvas>
+          </div>
+          <div id="status" class="status" role="status" aria-live="polite"></div>
+        </section>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
